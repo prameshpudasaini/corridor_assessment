@@ -20,7 +20,7 @@ source("ignore/keys.R")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 query_seg <- "SELECT t1.SegmentID, t1.FRC, t2.Name, t1.Miles, t1.Bearing, t1.StartLong, t2.Longitude, t1.EndLong, t1.StartLat, t2.Latitude, t1.EndLat
-FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry] AS t1
+FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry_backup] AS t1
 LEFT JOIN [ADOT_INRIX].[dbo].[InrixSegments] AS t2
 ON t1.SegmentID = t2.ID
 WHERE t1.District = 'Phoenix' AND t1.Bearing IN ('E','W','N','S')"
@@ -1098,7 +1098,7 @@ server <- function(input, output, session) {
         dirc_OS <- c(input$dirc1_OS, input$dirc2_OS)
         query <- paste0(
             "SELECT [timestamp],[SegmentID],[speed],[score] FROM [ADOT_INRIX].[dbo].[Inrix_Realtime] WHERE SegmentID IN (",
-            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry] WHERE District = 'Phoenix' AND FRC IN (",
+            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry_backup] WHERE District = 'Phoenix' AND FRC IN (",
             paste(sQuote(input$frc_OS, "'"), collapse = ","),
             ") AND Bearing IN (",
             paste(sQuote(dirc_OS, "'"), collapse = ","),
@@ -1111,7 +1111,7 @@ server <- function(input, output, session) {
         sqlData[, SegmentID := as.character(SegmentID)]
         sqlData[, timestamp := as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%S") - 7 * 3600]
         
-        score_pie <- sqlData[, score := as.factor(score)][, .N, by = score]
+        score_pie <- copy(sqlData)[, score := as.factor(score)][, .N, by = score]
         score_pie <- getScore4Plot(score_pie)[order(score)]
         
         sqlData <- sqlData[SegmentID %in% seg$SegmentID & score %in% input$score_OS, ]
