@@ -45,6 +45,18 @@ seg_FF <- as.data.table(sqlQuery(getSQLConnection("STL4"), query_seg_FF))[, .(Se
 seg_FF[, SegmentID := as.character(SegmentID)]
 seg_FF_geo <- seg[seg_FF, on = .(SegmentID)][!is.na(Bearing) & tt_85 != 0, ]
 
+PSL <- as.data.table(sqlQuery(getSQLConnection("STL4"), query_PSL))
+
+lst <- lapply(PSL$geometry, function(x) {
+    v <- eval(parse(text = x))
+    m <- matrix(v, ncol = 2)
+    st_linestring(m)
+})
+
+PSL$geometry <- lst
+PSL$geometry <- st_as_sfc(PSL$geometry)
+PSL <- st_as_sf(PSL, crs = "+proj=longlat +datum=WGS84")
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # User-defined Variables -------------------------------------------------------
@@ -226,7 +238,7 @@ tabItem_SA <- tabItem(
                             value = as.POSIXct("16:00", format = "%H:%M", tz = "UTC"), 
                             seconds = FALSE, 
                             minute.steps = 15
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -264,7 +276,7 @@ tabItem_SA <- tabItem(
                             choiceValues = c("N", "S", NA),
                             selected = c("N"), 
                             inline = TRUE
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -289,7 +301,7 @@ tabItem_SA <- tabItem(
                     choiceValues = c(30, 20, 10),
                     selected = c(30), 
                     inline = TRUE
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         type = "inline",
@@ -378,7 +390,7 @@ tabItem_SA <- tabItem(
                 leafletOutput(
                     "ffs85_SA",
                     height = map_height
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         colour = "red",
@@ -397,7 +409,7 @@ tabItem_SA <- tabItem(
                 leafletOutput(
                     "psl_SA",
                     height = map_height
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         colour = "red",
@@ -450,7 +462,7 @@ tabItem_TTI <- tabItem(
                             value = as.POSIXct("16:00", format = "%H:%M", tz = "UTC"), 
                             seconds = FALSE, 
                             minute.steps = 15
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -488,7 +500,7 @@ tabItem_TTI <- tabItem(
                             choiceValues = c("N", "S", NA),
                             selected = c("N"), 
                             inline = TRUE
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -513,7 +525,7 @@ tabItem_TTI <- tabItem(
                     choiceValues = c(30, 20, 10),
                     selected = c(30), 
                     inline = TRUE
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         type = "inline",
@@ -587,7 +599,7 @@ tabItem_TTI <- tabItem(
                 leafletOutput(
                     "segment_TTI" ,
                     height = map_height
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         colour = "red",
@@ -662,7 +674,7 @@ tabItem_PTI <- tabItem(
                             value = as.POSIXct("16:00", format = "%H:%M", tz = "UTC"), 
                             seconds = FALSE, 
                             minute.steps = 15
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -700,7 +712,7 @@ tabItem_PTI <- tabItem(
                             choiceValues = c("N", "S", NA),
                             selected = c("N"), 
                             inline = TRUE
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -725,7 +737,7 @@ tabItem_PTI <- tabItem(
                     choiceValues = c(30, 20, 10),
                     selected = c(30), 
                     inline = TRUE
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         type = "inline",
@@ -799,7 +811,7 @@ tabItem_PTI <- tabItem(
                 leafletOutput(
                     "segment_PTI",
                     height = map_height
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         colour = "red",
@@ -874,7 +886,7 @@ tabItem_SI <- tabItem(
                             value = as.POSIXct("16:00", format = "%H:%M", tz = "UTC"), 
                             seconds = FALSE, 
                             minute.steps = 15
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -912,7 +924,7 @@ tabItem_SI <- tabItem(
                             choiceValues = c("N", "S", NA),
                             selected = c("N"), 
                             inline = TRUE
-                        ) |> 
+                        ) %>% 
                             helper(
                                 icon = "question-circle",
                                 type = "inline",
@@ -937,7 +949,7 @@ tabItem_SI <- tabItem(
                     choiceValues = c(30, 20, 10),
                     selected = c(30), 
                     inline = TRUE
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         type = "inline",
@@ -1011,7 +1023,7 @@ tabItem_SI <- tabItem(
                 leafletOutput(
                     "segment_SI",
                     height = map_height
-                ) |> 
+                ) %>% 
                     helper(
                         icon = "question-circle",
                         colour = "red",
@@ -1136,12 +1148,12 @@ server <- function(input, output, session) {
         binpal <- colorBin(palette = "RdYlGn", domain = mapData$OS, bins = Bins)
         bincolor <- binpal(mapData$OS)
         
-        leaflet() |> 
-            addTiles(group = "OSM") |> 
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |> 
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |> 
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |> 
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>% 
+            addTiles(group = "OSM") %>% 
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>% 
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>% 
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>% 
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1149,7 +1161,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |> 
+            ) %>% 
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1161,14 +1173,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |> 
+            ) %>% 
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$OS,
                 title = "Speed (mph)",
                 opacity = 3
-            ) |> 
+            ) %>% 
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1184,12 +1196,12 @@ server <- function(input, output, session) {
         binpal <- colorBin(palette = "RdYlGn", domain = mapData$speed_85, bins = Bins)
         bincolor <- binpal(mapData$speed_85)
         
-        leaflet() |> 
-            addTiles(group = "OSM") |> 
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |> 
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |> 
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |> 
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>% 
+            addTiles(group = "OSM") %>% 
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>% 
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>% 
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>% 
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1197,7 +1209,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |> 
+            ) %>% 
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1209,14 +1221,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |> 
+            ) %>% 
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$speed_85,
                 title = "Speed (mph)",
                 opacity = 3
-            ) |> 
+            ) %>% 
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1225,27 +1237,16 @@ server <- function(input, output, session) {
     })
     
     output$psl_SA <- renderLeaflet({
-        PSL <- as.data.table(sqlQuery(getSQLConnection("STL4"), query_PSL))
-        
-        lst <- lapply(PSL$geometry, function(x) {
-            v <- eval(parse(text = x))
-            m <- matrix(v, ncol = 2)
-            st_linestring(m)
-        })
-        
-        PSL$geometry <- lst
-        PSL$geometry <- st_as_sfc(PSL$geometry)
-        PSL <- st_as_sf(PSL, crs = "+proj=longlat +datum=WGS84")
         
         binpal <- colorFactor(palette = "RdYlGn", domain = PSL$SpeedLimit)
         bincolor <- binpal(PSL$SpeedLimit)
         
-        leaflet() |> 
-            addTiles(group = "OSM") |> 
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |> 
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |> 
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |> 
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>% 
+            addTiles(group = "OSM") %>% 
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>% 
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>% 
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>% 
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = PSL,
                 color = bincolor,
@@ -1256,14 +1257,14 @@ server <- function(input, output, session) {
                     as.character(PSL$SpeedLimit), " mph on ",
                     as.character(PSL$LOCATION)
                 ),
-            ) |> 
+            ) %>% 
             addLegend(
                 "topright",
                 pal = binpal,
                 values = PSL$SpeedLimit,
                 title = "Speed (mph)",
                 opacity = 3
-            ) |> 
+            ) %>% 
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 options = layersControlOptions(collapsed = TRUE, position = "bottomright")
@@ -1275,7 +1276,7 @@ server <- function(input, output, session) {
         speedDist <- getFRC4Plot(speedDist)
         speedDist <- getDirc4Plot(speedDist)
         
-        plot_ly(speedDist, type = "box", x = ~FRC, y = ~OS, color = ~Bearing, boxmean = TRUE) |> 
+        plot_ly(speedDist, type = "box", x = ~FRC, y = ~OS, color = ~Bearing, boxmean = TRUE) %>% 
             layout(title = "Observed Speed by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Observed speed (mph)"),
@@ -1287,7 +1288,7 @@ server <- function(input, output, session) {
         speedDist85 <- getFRC4Plot(speedDist85)
         speedDist85 <- getDirc4Plot(speedDist85)
         
-        plot_ly(speedDist85, type = "box", x = ~FRC, y = ~speed_85, color = ~Bearing, boxmean = TRUE) |> 
+        plot_ly(speedDist85, type = "box", x = ~FRC, y = ~speed_85, color = ~Bearing, boxmean = TRUE) %>% 
             layout(title = "Free-Flow Speed by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Free-flow speed (mph)"),
@@ -1299,7 +1300,7 @@ server <- function(input, output, session) {
         classLength <- getFRC4Plot(classLength)
         classLength <- getDirc4Plot(classLength)
         
-        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) |> 
+        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) %>% 
             layout(title = "Road Length by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Length (miles)"),
@@ -1307,7 +1308,7 @@ server <- function(input, output, session) {
     })
     
     output$pieScore_OS <- renderPlotly({
-        plot_ly(sqlData_SA()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) |> 
+        plot_ly(sqlData_SA()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) %>% 
             layout(title = "Data Confidence Pie Chart",
                    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
@@ -1324,7 +1325,7 @@ server <- function(input, output, session) {
         dirc_TTI <- c(input$dirc1_TTI, input$dirc2_TTI)
         query <<- paste0(
             "SELECT [timestamp],[SegmentID],[travelTimeMinutes],[score] FROM [ADOT_INRIX].[dbo].[Inrix_Realtime] WHERE SegmentID IN (",
-            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry] WHERE District = 'Phoenix' AND FRC IN (",
+            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry_backup] WHERE District = 'Phoenix' AND FRC IN (",
             paste(sQuote(input$frc_TTI, "'"), collapse = ","),
             ") AND Bearing IN (",
             paste(sQuote(dirc_TTI, "'"), collapse = ","),
@@ -1362,12 +1363,12 @@ server <- function(input, output, session) {
         binpal <- colorFactor(palette = "RdYlGn", domain = mapData$d_SPM)
         bincolor <- binpal(mapData$d_SPM)
         
-        leaflet() |>
-            addTiles(group = "OSM") |>
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |>
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |>
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |>
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>%
+            addTiles(group = "OSM") %>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>%
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>%
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1375,7 +1376,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |>
+            ) %>%
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1387,14 +1388,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |>
+            ) %>%
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$d_SPM,
                 title = "Travel Time Index",
                 opacity = 3
-            ) |>
+            ) %>%
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1412,12 +1413,12 @@ server <- function(input, output, session) {
         binpal <- colorFactor(palette = "RdYlGn", domain = mapData$d_CPM)
         bincolor <- binpal(mapData$d_CPM)
         
-        leaflet() |>
-            addTiles(group = "OSM") |>
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |>
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |>
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |>
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>%
+            addTiles(group = "OSM") %>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>%
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>%
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1425,7 +1426,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |>
+            ) %>%
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1437,14 +1438,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |>
+            ) %>%
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$d_CPM,
                 title = "Travel Time Index",
                 opacity = 3
-            ) |>
+            ) %>%
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1454,15 +1455,15 @@ server <- function(input, output, session) {
     
     output$top_corridor_TTI <- renderPlotly({
         plotData <- sqlData_TTI()$sqlData[CorrMiles >= 2 & nchar(Name) != 0, .(Name, Bearing, CPM)]
-        plotData <- unique(plotData)[order(CPM)] |> head(10)
-        plot_ly(plotData, type = "bar", x = ~CPM, y = ~Name, orientation = "h") |> 
+        plotData <- unique(plotData)[order(CPM)] %>% head(10)
+        plot_ly(plotData, type = "bar", x = ~CPM, y = ~Name, orientation = "h") %>% 
             layout(title = "Top 10 Corridors with Lowest TTI",
                    xaxis = list(title = "Travel Time Index"),
                    yaxis = list(title = "", categoryorder = "total descending"))
     })
     
     output$segmentBP_TTI <- renderPlotly({
-        plot_ly(sqlData_TTI()$sqlData, type = "box", x = ~FRC, y = ~SPM, color = ~Bearing, boxmean = TRUE) |> 
+        plot_ly(sqlData_TTI()$sqlData, type = "box", x = ~FRC, y = ~SPM, color = ~Bearing, boxmean = TRUE) %>% 
             layout(title = "Segment TTI by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Travel Time Index"),
@@ -1470,7 +1471,7 @@ server <- function(input, output, session) {
     })
     
     output$corridorBP_TTI <- renderPlotly({
-        plot_ly(sqlData_TTI()$sqlData, type = "box", x = ~FRC, y = ~CPM, color = ~Bearing, boxmean = TRUE) |>
+        plot_ly(sqlData_TTI()$sqlData, type = "box", x = ~FRC, y = ~CPM, color = ~Bearing, boxmean = TRUE) %>%
             layout(title = "Corridor TTI by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Travel Time Index"),
@@ -1480,7 +1481,7 @@ server <- function(input, output, session) {
     output$classLength_TTI <- renderPlotly({
         classLength <- sqlData_TTI()$sqlData[, .(Length = round(sum(Miles), 2)), by = c("FRC", "Bearing")]
         
-        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) |>
+        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) %>%
             layout(title = "Road Length by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Length (miles)"),
@@ -1488,7 +1489,7 @@ server <- function(input, output, session) {
     })
     
     output$pieScore_TTI <- renderPlotly({
-        plot_ly(sqlData_TTI()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) |> 
+        plot_ly(sqlData_TTI()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) %>% 
             layout(title = "Data Confidence Pie Chart",
                    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
@@ -1505,7 +1506,7 @@ server <- function(input, output, session) {
         dirc_PTI <- c(input$dirc1_PTI, input$dirc2_PTI)
         query <<- paste0(
             "SELECT [timestamp],[SegmentID],[travelTimeMinutes],[score] FROM [ADOT_INRIX].[dbo].[Inrix_Realtime] WHERE SegmentID IN (",
-            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry] WHERE District = 'Phoenix' AND FRC IN (",
+            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry_backup] WHERE District = 'Phoenix' AND FRC IN (",
             paste(sQuote(input$frc_PTI, "'"), collapse = ","),
             ") AND Bearing IN (",
             paste(sQuote(dirc_PTI, "'"), collapse = ","),
@@ -1543,12 +1544,12 @@ server <- function(input, output, session) {
         binpal <- colorFactor(palette = "RdYlGn", domain = mapData$d_SPM)
         bincolor <- binpal(mapData$d_SPM)
         
-        leaflet() |>
-            addTiles(group = "OSM") |>
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |>
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |>
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |>
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>%
+            addTiles(group = "OSM") %>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>%
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>%
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1556,7 +1557,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |>
+            ) %>%
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1568,14 +1569,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |>
+            ) %>%
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$d_SPM,
                 title = "Planning Time Index",
                 opacity = 3
-            ) |>
+            ) %>%
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1593,12 +1594,12 @@ server <- function(input, output, session) {
         binpal <- colorFactor(palette = "RdYlGn", domain = mapData$d_CPM)
         bincolor <- binpal(mapData$d_CPM)
         
-        leaflet() |>
-            addTiles(group = "OSM") |>
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |>
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |>
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |>
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>%
+            addTiles(group = "OSM") %>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>%
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>%
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1606,7 +1607,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |>
+            ) %>%
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1618,14 +1619,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |>
+            ) %>%
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$d_CPM,
                 title = "Planning Time Index",
                 opacity = 3
-            ) |>
+            ) %>%
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1635,15 +1636,15 @@ server <- function(input, output, session) {
     
     output$top_corridor_PTI <- renderPlotly({
         plotData <- sqlData_PTI()$sqlData[CorrMiles >= 2 & nchar(Name) != 0, .(Name, Bearing, CPM)]
-        plotData <- unique(plotData)[order(CPM)] |> head(10)
-        plot_ly(plotData, type = "bar", x = ~CPM, y = ~Name, orientation = "h") |> 
+        plotData <- unique(plotData)[order(CPM)] %>% head(10)
+        plot_ly(plotData, type = "bar", x = ~CPM, y = ~Name, orientation = "h") %>% 
             layout(title = "Top 10 Corridors with Lowest PTI",
                    xaxis = list(title = "Planning Time Index"),
                    yaxis = list(title = "", categoryorder = "total descending"))
     })
     
     output$segmentBP_PTI <- renderPlotly({
-        plot_ly(sqlData_PTI()$sqlData, type = "box", x = ~FRC, y = ~SPM, color = ~Bearing, boxmean = TRUE) |> 
+        plot_ly(sqlData_PTI()$sqlData, type = "box", x = ~FRC, y = ~SPM, color = ~Bearing, boxmean = TRUE) %>% 
             layout(title = "Segment PTI by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Planning Time Index"),
@@ -1651,7 +1652,7 @@ server <- function(input, output, session) {
     })
     
     output$corridorBP_PTI <- renderPlotly({
-        plot_ly(sqlData_PTI()$sqlData, type = "box", x = ~FRC, y = ~CPM, color = ~Bearing, boxmean = TRUE) |>
+        plot_ly(sqlData_PTI()$sqlData, type = "box", x = ~FRC, y = ~CPM, color = ~Bearing, boxmean = TRUE) %>%
             layout(title = "Corridor PTI by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Planning Time Index"),
@@ -1661,7 +1662,7 @@ server <- function(input, output, session) {
     output$classLength_PTI <- renderPlotly({
         classLength <- sqlData_PTI()$sqlData[, .(Length = round(sum(Miles), 2)), by = c("FRC", "Bearing")]
         
-        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) |>
+        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) %>%
             layout(title = "Road Length by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Length (miles)"),
@@ -1669,7 +1670,7 @@ server <- function(input, output, session) {
     })
     
     output$pieScore_PTI <- renderPlotly({
-        plot_ly(sqlData_PTI()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) |> 
+        plot_ly(sqlData_PTI()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) %>% 
             layout(title = "Data Confidence Pie Chart",
                    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
@@ -1686,7 +1687,7 @@ server <- function(input, output, session) {
         dirc_SI <- c(input$dirc1_SI, input$dirc2_SI)
         query <<- paste0(
             "SELECT [timestamp],[SegmentID],[speed],[score] FROM [ADOT_INRIX].[dbo].[Inrix_Realtime] WHERE SegmentID IN (",
-            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry] WHERE District = 'Phoenix' AND FRC IN (",
+            "SELECT [SegmentID] FROM [ADOT_INRIX].[dbo].[InrixSegments_Geometry_backup] WHERE District = 'Phoenix' AND FRC IN (",
             paste(sQuote(input$frc_SI, "'"), collapse = ","),
             ") AND Bearing IN (",
             paste(sQuote(dirc_SI, "'"), collapse = ","),
@@ -1724,12 +1725,12 @@ server <- function(input, output, session) {
         binpal <- colorFactor(palette = "RdYlGn", domain = mapData$d_SPM)
         bincolor <- binpal(mapData$d_SPM)
         
-        leaflet() |>
-            addTiles(group = "OSM") |>
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |>
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |>
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |>
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>%
+            addTiles(group = "OSM") %>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>%
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>%
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1737,7 +1738,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |>
+            ) %>%
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1749,14 +1750,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |>
+            ) %>%
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$d_SPM,
                 title = "Speeding Index",
                 opacity = 3
-            ) |>
+            ) %>%
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1774,12 +1775,12 @@ server <- function(input, output, session) {
         binpal <- colorFactor(palette = "RdYlGn", domain = mapData$d_CPM)
         bincolor <- binpal(mapData$d_CPM)
         
-        leaflet() |>
-            addTiles(group = "OSM") |>
-            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") |>
-            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") |>
-            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") |>
-            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) |>
+        leaflet() %>%
+            addTiles(group = "OSM") %>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "Dark CartoDB") %>%
+            addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+            addProviderTiles(providers$Stamen.TonerLite, group = "Toner") %>%
+            fitBounds(-112.196511, 33.681232, -111.944520, 33.377272) %>%
             addPolylines(
                 data = mapData,
                 color = bincolor,
@@ -1787,7 +1788,7 @@ server <- function(input, output, session) {
                 weight = 5,
                 smoothFactor = 2,
                 layerId = ~SegmentID
-            ) |>
+            ) %>%
             addCircleMarkers(
                 data = mapData,
                 lng = ~Longitude,
@@ -1799,14 +1800,14 @@ server <- function(input, output, session) {
                 ),
                 group = "Markers",
                 clusterOptions = markerClusterOptions()
-            ) |>
+            ) %>%
             addLegend(
                 "topright",
                 pal = binpal,
                 values = mapData$d_CPM,
                 title = "Speeding Index",
                 opacity = 3
-            ) |>
+            ) %>%
             addLayersControl(
                 baseGroups = c("Dark CartoDB", "CartoDB", "Toner", "OSM"),
                 overlayGroups = c("Markers"),
@@ -1816,15 +1817,15 @@ server <- function(input, output, session) {
     
     output$top_corridor_SI <- renderPlotly({
         plotData <- sqlData_SI()$sqlData[CorrMiles >= 2 & nchar(Name) != 0, .(Name, Bearing, CPM)]
-        plotData <- unique(plotData)[order(-CPM)] |> head(10)
-        plot_ly(plotData, type = "bar", x = ~CPM, y = ~Name, orientation = "h") |> 
+        plotData <- unique(plotData)[order(-CPM)] %>% head(10)
+        plot_ly(plotData, type = "bar", x = ~CPM, y = ~Name, orientation = "h") %>% 
             layout(title = "Top 10 Corridors with Highest SI",
                    xaxis = list(title = "Speeding Index"),
                    yaxis = list(title = "", categoryorder = "total ascending"))
     })
     
     output$segmentBP_SI <- renderPlotly({
-        plot_ly(sqlData_SI()$sqlData, type = "box", x = ~FRC, y = ~SPM, color = ~Bearing, boxmean = TRUE) |> 
+        plot_ly(sqlData_SI()$sqlData, type = "box", x = ~FRC, y = ~SPM, color = ~Bearing, boxmean = TRUE) %>% 
             layout(title = "Segment SI by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Speeding Index"),
@@ -1832,7 +1833,7 @@ server <- function(input, output, session) {
     })
     
     output$corridorBP_SI <- renderPlotly({
-        plot_ly(sqlData_SI()$sqlData, type = "box", x = ~FRC, y = ~CPM, color = ~Bearing, boxmean = TRUE) |>
+        plot_ly(sqlData_SI()$sqlData, type = "box", x = ~FRC, y = ~CPM, color = ~Bearing, boxmean = TRUE) %>%
             layout(title = "Corridor SI by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Speeding Index"),
@@ -1842,7 +1843,7 @@ server <- function(input, output, session) {
     output$classLength_SI <- renderPlotly({
         classLength <- sqlData_SI()$sqlData[, .(Length = round(sum(Miles), 2)), by = c("FRC", "Bearing")]
         
-        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) |>
+        plot_ly(classLength, type = "bar", x = ~FRC, y = ~Length, color = ~Bearing) %>%
             layout(title = "Road Length by Class & Direction",
                    xaxis = list(title = "Functional class"),
                    yaxis = list(title = "Length (miles)"),
@@ -1850,7 +1851,7 @@ server <- function(input, output, session) {
     })
     
     output$pieScore_SI <- renderPlotly({
-        plot_ly(sqlData_SI()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) |> 
+        plot_ly(sqlData_SI()$score_pie, type = "pie", values = ~N, labels = ~score, rotation = 270) %>% 
             layout(title = "Data Confidence Pie Chart",
                    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
